@@ -1,3 +1,6 @@
+#ifndef CONWAY_H
+#define CONWAY_H
+
 int mod(int n, int d);
 
 typedef struct
@@ -22,3 +25,5 @@ void conway_simulateN(conway *c, int n);
 void conway_destroy(conway *c);
 
 char **conway_print(conway *c, char live, char dead, char **ret);
+
+#endif // CONWAY_H
