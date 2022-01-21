@@ -148,6 +148,20 @@ void processInput(GLFWwindow* window) {
     }
 }
 
+void terminate(conway* c, char **conwayOutput) {
+    // clear conway
+    conway_destroy(c);
+
+    // terminate GLFW
+    glfwTerminate();
+
+    for (int x = 0; x < c->x; x++)
+    {
+        free(conwayOutput[x]);
+    }
+    free(conwayOutput);
+}
+
 int main()
 {
     std::cout << "Hello, world!\n" << std::endl;
@@ -209,10 +223,16 @@ int main()
     // window
     GLFWwindow* window = nullptr;
     createWindow(window, title, width, height, framebufferSizeCallback);
+    if (!window) {
+        std::cout << "Could not create window" << std::endl;
+        terminate(&c, output);
+        return -1;
+    }
 
     // load glad
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        glfwTerminate();
+        std::cout << "Could not load GLAD" << std::endl;
+        terminate(&c, output);
         return -1;
     }
 
@@ -249,17 +269,8 @@ int main()
         glfwPollEvents();
     }
 
-    for (int x = 0; x < c.x; x++)
-    {
-        free(output[x]);
-    }
-    free(output);
-
-    // clear conway
-    conway_destroy(&c);
-
-    // terminate GLFW
-    glfwTerminate();
+    std::cout << "Goodbye" << std::endl;
+    terminate(&c, output);
 
     return 0;
 }
