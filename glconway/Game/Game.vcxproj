@@ -152,6 +152,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="glfw3.dll" />
+    <None Include="main.fs" />
+    <None Include="main.gs" />
+    <None Include="main.vs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="conway.h" />

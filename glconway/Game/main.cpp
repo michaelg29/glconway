@@ -20,9 +20,11 @@ void printTable(char** table, int n)
 
 // rendering parameters
 const char* title = "Conway's Game of Life";
-unsigned int width = 1000;
-unsigned int height = 400;
-double generationFrequency = 0.5; // time in between generations
+unsigned int width = 100;
+unsigned int height = 30;
+unsigned int cellDim = 20;
+
+double generationFrequency = 0.025; // time in between generations
 
 // initialize GLFW
 void initGLFW(unsigned int versionMajor, unsigned int versionMinor) {
@@ -148,6 +150,24 @@ void processInput(GLFWwindow* window) {
     }
 }
 
+void renderScreen(GLFWwindow* window, GLuint shaderProgram, conway c, GLuint VAO, GLuint VBO) {
+    // clear screen
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // update data
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, c.x * c.y, c.board);
+
+    // render object
+    glUseProgram(shaderProgram);
+    glDrawArrays(GL_POINTS, 0, c.x * c.y);
+
+    // swap buffers
+    glfwSwapBuffers(window);
+}
+
 void terminate(conway* c, char **conwayOutput) {
     // clear conway
     conway_destroy(c);
@@ -222,7 +242,7 @@ int main()
 
     // window
     GLFWwindow* window = nullptr;
-    createWindow(window, title, width, height, framebufferSizeCallback);
+    createWindow(window, title, width * cellDim, height * cellDim, framebufferSizeCallback);
     if (!window) {
         std::cout << "Could not create window" << std::endl;
         terminate(&c, output);
@@ -237,12 +257,45 @@ int main()
     }
 
     // set viewport
-    framebufferSizeCallback(window, width, height);
+    framebufferSizeCallback(window, width * cellDim, height * cellDim);
+
+    /*
+        setup shaders
+    */
+    GLuint shaderProgram = genShaderProgram("main.vs", "main.fs", "main.gs");
+    // set dimensions
+    glUseProgram(shaderProgram);
+    glUniform1i(glGetUniformLocation(shaderProgram, "width"), c.y);
+    glUniform1f(glGetUniformLocation(shaderProgram, "cellWidth"), 2.0f / (float)width);
+    glUniform1f(glGetUniformLocation(shaderProgram, "cellHeight"), 2.0f / (float)height);
+
+    std::cout << 2.0f / (float)width << ' ' << 2.0f / (float)height << std::endl;
+
+    /*
+        setup VAO/VBO
+    */
+    GLuint VAO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    // VBO
+    GLuint VBO;
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // set data
+    glBufferData(GL_ARRAY_BUFFER, c.x * c.y, c.board, GL_DYNAMIC_DRAW);
+    // set attribute pointers
+    glEnableVertexAttribArray(0);
+    // attribute index 0: 1 GL_BYTE per vertex, stride sizeof(char) to get to next vertex
+    glVertexAttribIPointer(0, 1, GL_BYTE, sizeof(char), 0);
 
     // timing variables
     double dt = 0.0;
     double lastFrame = 0.0;
     double timeSinceLastGen = 0.0;
+
+    // render initial configuration
+    renderScreen(window, shaderProgram, c, VAO, VBO);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -261,6 +314,9 @@ int main()
             output = conway_print(&c, '0', ' ', output);
             printTable(output, c.x);
 
+            // render update state
+            renderScreen(window, shaderProgram, c, VAO, VBO);
+
             // reset timer
             timeSinceLastGen = 0.0;
         }
@@ -268,6 +324,17 @@ int main()
         // get new input
         glfwPollEvents();
     }
+
+    // clear buffers/arrays
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // delete buffers/arrays
+    glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &VAO);
+
+    // delete shaders
+    glDeleteProgram(shaderProgram);
 
     std::cout << "Goodbye" << std::endl;
     terminate(&c, output);
